@@ -1,6 +1,10 @@
 {
   "name": "Curated Reads",
   "short_name": "Archive",
-  "gcm_sender_id": "103953800507", 
-  "display": "standalone"
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#Fdfbf7",
+  "theme_color": "#Fdfbf7",
+  "orientation": "portrait",
+    "gcm_sender_id": "341825806936" 
 }
