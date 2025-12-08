@@ -9,12 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "clevertap-web-sdk": "^2.3.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.25",
     "next": "16.0.7",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/clevertap-web-sdk": "^1.1.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
