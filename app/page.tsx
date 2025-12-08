@@ -1,154 +1,177 @@
 "use client";
 
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "../lib/store";
+import { useAuthStore } from "@/lib/store";
 import { useEffect, useState } from "react";
+
+// --- COMPONENTS ---
+import NativeSpotlight from "./components/NativeSpotlight";
+import Footer from "./components/Footer";
+import Manifesto from "./components/Manifesto";
 
 // --- TYPES ---
 type HeroBook = {
+  id: string;
   title: string;
   author: string;
   description: string;
   coverUrl: string;
   price: number;
-  id: string;
+};
+
+// --- PARTICLE COMPONENT (Subtle Dust) ---
+const FloatingParticles = () => {
+  // 1. Start with empty state (matches server)
+  const [particles, setParticles] = useState<any[]>([]);
+
+  // 2. Generate random numbers ONLY on the client
+  useEffect(() => {
+    const generatedParticles = [...Array(8)].map((_, i) => ({
+      id: i,
+      size: Math.random() * 4 + 1,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      duration: Math.random() * 20 + 10,
+    }));
+    setParticles(generatedParticles);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-[#9F8155] opacity-20"
+          style={{
+            width: p.size,
+            height: p.size,
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+          }}
+          animate={{
+            y: [0, -100, 0],
+            opacity: [0, 0.5, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      ))}
+    </div>
+  );
 };
 
 export default function Home() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, addToCart } = useAuthStore();
   const router = useRouter();
 
-  // STATE: This is our Single Source of Truth
   const [book, setBook] = useState<HeroBook | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- 1. FETCH DYNAMIC DATA ---
+  // Scroll Parallax for Marquee (Only reacts to scrolling, not mouse)
+  const { scrollYProgress } = useScroll();
+  const marqueeX = useTransform(scrollYProgress, [0, 1], [0, -200]);
+
+  // --- FETCH HERO BOOK ---
   useEffect(() => {
     const fetchHeroBook = async () => {
       try {
-        console.log("📡 [API] Fetching Hero Book...");
-
-        // Fetch "Trending" books
+        // Fetch "Design" books
         const response = await fetch(
-          "https://openlibrary.org/trending/daily.json?limit=1"
+          "https://www.googleapis.com/books/v1/volumes?q=subject:design&orderBy=newest&langRestrict=en&maxResults=5"
         );
         const data = await response.json();
-        const work = data.works[0]; // Get the #1 trending book
 
-        // Fetch detailed description for this specific book
-        const detailsResponse = await fetch(
-          `https://openlibrary.org${work.key}.json`
+        const validBook = data.items?.find(
+          (item: any) =>
+            item.volumeInfo.imageLinks?.thumbnail && item.volumeInfo.description
         );
-        const detailsData = await detailsResponse.json();
 
-        // Clean up the description (API sometimes returns object or string)
-        let desc = "No description available.";
-        if (typeof detailsData.description === "string")
-          desc = detailsData.description;
-        else if (detailsData.description?.value)
-          desc = detailsData.description.value;
+        if (!validBook) return;
 
-        // Construct the Object
-        const dynamicBook: HeroBook = {
-          title: work.title,
-          author: work.author_name?.[0] || "Unknown Author",
-          description: desc.substring(0, 150) + "...", // Truncate for UI
-          coverUrl: `https://covers.openlibrary.org/b/id/${work.cover_i}-L.jpg`,
-          id: work.key,
-          // Generate a price based on title length so it's consistent
-          price: parseFloat((15 + (work.title.length % 10)).toFixed(2)),
-        };
+        const info = validBook.volumeInfo;
+        const rawImage = info.imageLinks.thumbnail;
+        const highResImage = rawImage
+          .replace("http:", "https:")
+          .replace("&zoom=1", "&zoom=0");
 
-        setBook(dynamicBook);
-        console.log("✅ [API] Hero Book Loaded:", dynamicBook.title);
+        setBook({
+          id: validBook.id,
+          title: info.title,
+          author: info.authors?.[0] || "Unknown Author",
+          description:
+            info.description.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 150) +
+            "...",
+          coverUrl: highResImage,
+          price: parseFloat((25 + (info.title.length % 15)).toFixed(2)),
+        });
       } catch (error) {
-        console.error("❌ [API] Failed to fetch hero book", error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchHeroBook();
   }, []);
 
-  // --- 2. DYNAMIC EVENT HANDLER ---
   const handleAddToCart = async () => {
-    console.log('🛒 [ACTION] "Buy Now" Clicked');
-
     if (!user) {
       router.push("/login");
       return;
     }
-
-    // Guard: Ensure book data exists
     if (!book) return;
 
-    alert(`Processing Purchase for: ${book.title}`);
+    addToCart({
+      id: book.id,
+      title: book.title,
+      price: book.price,
+      coverUrl: book.coverUrl,
+      quantity: 1,
+    });
 
     if (typeof window !== "undefined") {
-      try {
-        const clevertapModule = await import("clevertap-web-sdk");
-        const clevertap = clevertapModule.default || clevertapModule;
-
-        // --- STRICT FORMATTING START ---
-
-        // 1. Force Amount to be a clean Number (not string)
-        const totalAmount = Number(book.price);
-
-        // 2. Generate a Random Integer for ID (like 24052013)
-        const randomChargeID = Math.floor(10000000 + Math.random() * 90000000);
-
-        // 3. Construct the Event Object exactly as requested
-        const chargeDetails = {
-          Amount: totalAmount,
-          "Payment mode": "Credit Card",
-          "Charged ID": randomChargeID,
-          Items: [
-            {
-              Category: "Books",
-              "Book name": book.title, // Dynamic Title
-              Quantity: 1,
-            },
-          ],
-        };
-        // --- STRICT FORMATTING END ---
-
-        console.log("🚀 [CLEVERTAP] Pushing Charged:", chargeDetails);
-
-        // Send to CleverTap
-        clevertap.event.push("Charged", chargeDetails);
-      } catch (e) {
-        console.error("❌ CleverTap Failed:", e);
-      }
+      const ctModule = await import("clevertap-web-sdk");
+      const ct = ctModule.default || ctModule;
+      ct.event.push("Added to Cart", {
+        "Product Name": book.title,
+        Category: "Hero Section",
+      });
     }
   };
 
   return (
-    <main className="min-h-screen w-full bg-paper flex flex-col lg:flex-row overflow-hidden relative">
-      {/* NAV */}
-      <nav className="absolute top-0 left-0 w-full p-8 z-50 flex justify-between items-center">
-        <div className="font-serif font-bold text-xl text-ink">CURATED.</div>
+    <main className="min-h-screen w-full bg-paper flex flex-col overflow-x-hidden relative">
+      {/* --- NAVIGATION --- */}
+      <nav className="absolute top-0 left-0 w-full p-8 z-50 flex justify-between items-center mix-blend-difference text-white">
+        <div className="font-serif font-bold text-xl">CURATED.</div>
+
         <div className="hidden lg:block">
-          <a
-            href="/shop"
-            className="font-sans text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-ink"
+          <button
+            onClick={() => router.push("/shop")}
+            className="group relative px-6 py-2 rounded-full border border-gray-500 hover:border-white transition-colors duration-300 overflow-hidden"
           >
-            Browse Collection
-          </a>
+            <span className="relative z-10 font-sans text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors duration-300">
+              Browse Collection
+            </span>
+            <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+          </button>
         </div>
+
         {user ? (
           <div className="flex items-center gap-4">
-            <span className="font-sans text-xs tracking-widest text-gray-500">
-              HELLO, {user.name.toUpperCase()}
+            <span className="font-sans text-xs tracking-widest text-gray-400">
+              HELLO, {user.name.split(" ")[0].toUpperCase()}
             </span>
             <button
               onClick={() => {
                 logout();
                 router.refresh();
               }}
-              className="font-sans text-xs font-bold uppercase text-red-500 ml-4"
+              className="font-sans text-xs font-bold uppercase text-red-400 ml-4 hover:opacity-70"
             >
               LOGOUT
             </button>
@@ -156,112 +179,127 @@ export default function Home() {
         ) : (
           <button
             onClick={() => router.push("/login")}
-            className="font-sans text-xs font-bold uppercase tracking-widest text-ink border border-ink px-6 py-2 hover:bg-ink hover:text-white transition-colors"
+            className="font-sans text-xs font-bold uppercase tracking-widest text-white border border-white px-6 py-2 hover:bg-white hover:text-black transition-colors"
           >
-            LOGIN / JOIN
+            LOGIN
           </button>
         )}
       </nav>
 
-      {/* LOADING STATE */}
-      {loading || !book ? (
-        <div className="w-full h-screen flex items-center justify-center">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-64 w-48 bg-gray-200 mb-4 rounded shadow-lg"></div>
-            <div className="h-4 w-32 bg-gray-200 mb-2"></div>
-            <div className="h-8 w-64 bg-gray-200"></div>
+      {/* --- HERO SECTION --- */}
+      <section className="relative w-full lg:h-screen flex flex-col lg:flex-row">
+        {/* PARTICLES (Subtle Background movement) */}
+        <FloatingParticles />
+
+        {/* LOADING STATE */}
+        {loading || !book ? (
+          <div className="w-full h-screen flex items-center justify-center">
+            <div className="animate-pulse flex flex-col items-center gap-4">
+              <div className="h-[400px] w-[280px] bg-gray-200 rounded-sm shadow-xl"></div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          {/* LEFT SIDE: DYNAMIC TEXT */}
-          <div className="w-full lg:w-1/2 p-12 lg:p-24 flex flex-col justify-center z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-6"
-            >
-              <div className="flex items-center gap-4">
-                <span className="h-px w-12 bg-gold"></span>
-                <span className="font-sans text-xs uppercase tracking-[0.2em] text-gold font-bold">
-                  Trending Now
-                </span>
-              </div>
-
-              {/* DYNAMIC TITLE */}
-              <h1 className="font-serif text-5xl lg:text-7xl leading-[0.9] text-ink line-clamp-3">
-                {book.title}
-              </h1>
-
-              <p className="font-serif italic text-2xl text-gray-400">
-                by {book.author}
-              </p>
-
-              {/* DYNAMIC DESCRIPTION */}
-              <p className="font-sans text-gray-600 max-w-md text-lg leading-relaxed pt-4 line-clamp-4">
-                {book.description}
-              </p>
-
-              <div className="pt-8">
-                <button
-                  onClick={handleAddToCart}
-                  className="group relative px-8 py-4 bg-ink text-white font-sans text-sm tracking-widest overflow-hidden"
-                >
-                  <span className="relative z-10 group-hover:text-ink transition-colors duration-300">
-                    {user ? `BUY NOW ($${book.price})` : "LOGIN TO BUY"}
+        ) : (
+          <>
+            {/* LEFT SIDE: TEXT (Stable) */}
+            <div className="w-full lg:w-1/2 p-12 lg:p-24 flex flex-col justify-center z-10 pt-32 lg:pt-0">
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="space-y-8"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="h-[1px] w-12 bg-[#9F8155]"></span>
+                  <span className="font-sans text-xs uppercase tracking-[0.2em] text-[#9F8155] font-bold">
+                    Editor's Choice
                   </span>
-                  <div className="absolute inset-0 bg-gold transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                </button>
-              </div>
-            </motion.div>
-          </div>
+                </div>
 
-          {/* RIGHT SIDE: Visual + Kinetic Background */}
-          <div className="w-full lg:w-1/2 relative h-[50vh] lg:h-auto bg-[#e8e6e1] overflow-hidden">
-            {/* 1. Kinetic Marquee Text (Behind the book) */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] -rotate-45 opacity-5 pointer-events-none select-none z-0">
-              <motion.div
-                className="font-sans font-black text-[120px] leading-none whitespace-nowrap text-ink"
-                animate={{ x: [0, -1000] }}
-                transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-              >
-                BESTSELLER • ARCHIVE • COLLECTION • BESTSELLER • ARCHIVE •
-              </motion.div>
-              <motion.div
-                className="font-serif italic text-[120px] leading-none whitespace-nowrap text-ink mt-4"
-                animate={{ x: [-1000, 0] }} // Moves opposite direction
-                transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
-              >
-                READING • CULTURE • ART • READING • CULTURE • ART •
+                <h1 className="font-serif text-6xl lg:text-8xl leading-[0.9] text-ink line-clamp-3 mix-blend-darken">
+                  {book.title}
+                </h1>
+
+                <p className="font-serif italic text-2xl text-gray-400">
+                  by {book.author}
+                </p>
+
+                <p className="font-sans text-gray-600 max-w-md text-lg leading-relaxed pt-4 line-clamp-3">
+                  {book.description}
+                </p>
+
+                <div className="pt-8 flex gap-6">
+                  <button
+                    onClick={handleAddToCart}
+                    className="group relative px-8 py-4 bg-ink text-white font-sans text-sm tracking-widest overflow-hidden shadow-2xl hover:scale-105 transition-transform"
+                  >
+                    <span className="relative z-10 group-hover:text-ink transition-colors duration-300">
+                      {user ? `BUY NOW ($${book.price})` : "LOGIN TO BUY"}
+                    </span>
+                    <div className="absolute inset-0 bg-[#9F8155] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                  </button>
+
+                  <button
+                    onClick={() => router.push(`/book/${book.id}`)}
+                    className="px-8 py-4 border-b border-gray-300 font-sans text-sm tracking-widest text-gray-500 hover:text-ink hover:border-ink transition-colors"
+                  >
+                    VIEW DETAILS
+                  </button>
+                </div>
               </motion.div>
             </div>
 
-            {/* 2. The Book (Now with 3D Float Effect) */}
-            <div className="absolute inset-0 flex items-center justify-center p-12 z-10">
+            {/* RIGHT SIDE: IMAGE (Breathing, not Wobbly) */}
+            <div className="w-full lg:w-1/2 relative h-[60vh] lg:h-auto bg-[#e8e6e1] overflow-hidden flex items-center justify-center">
+              {/* KINETIC BACKGROUND TEXT */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] -rotate-45 opacity-[0.04] pointer-events-none select-none z-0">
+                <motion.div
+                  style={{ x: marqueeX }} // Scroll Parallax
+                  className="font-sans font-black text-[150px] leading-none whitespace-nowrap text-ink"
+                >
+                  ARCHIVE • DESIGN • CULTURE • ARCHIVE • DESIGN • CULTURE •
+                </motion.div>
+              </div>
+
+              {/* HERO IMAGE */}
               <motion.div
-                initial={{ scale: 1.2, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1, y: [0, -20, 0] }} // Floating Y animation
+                initial={{ scale: 1.1, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1, y: [0, -15, 0] }} // Gentle Breathing Float
                 transition={{
                   scale: { duration: 1.2 },
-                  y: { repeat: Infinity, duration: 6, ease: "easeInOut" }, // Infinite Float
+                  y: { repeat: Infinity, duration: 6, ease: "easeInOut" },
                 }}
-                className="relative w-64 h-96 lg:w-96 lg:h-[600px] shadow-2xl"
+                className="relative w-[280px] h-[420px] lg:w-[350px] lg:h-[540px] shadow-2xl z-10 perspective-1000"
               >
                 <Image
                   src={book.coverUrl}
                   alt={book.title}
                   fill
-                  className="object-cover"
+                  className="object-cover rounded-sm"
                   priority
                 />
-                {/* Realistic Shadow */}
-                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-black/20 blur-xl rounded-full"></div>
+                {/* Realistic Gloss Reflection */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10 pointer-events-none rounded-sm" />
               </motion.div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </section>
+
+      {/* --- CONTENT FLOW --- */}
+
+      {/* 1. SCROLLING MANIFESTO */}
+      <Manifesto />
+
+      {/* 2. CLEVERTAP NATIVE SLOT (Dark Mode) */}
+      <div
+        id="ct-exclusive-drop-slot"
+        className="w-full relative z-30 bg-[#1a1a1a]"
+      >
+        <NativeSpotlight />
+      </div>
+
+      {/* 3. MEGA FOOTER */}
+      <Footer />
     </main>
   );
 }

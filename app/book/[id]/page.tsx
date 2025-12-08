@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useAuthStore } from "../../../lib/store";
+import { useAuthStore } from "@/lib/store";
 
-// Fake lively feedback data
+// Lively, "Fake" Reviews
 const REVIEWS = [
   {
     user: "Elena R.",
@@ -19,50 +19,47 @@ const REVIEWS = [
     rating: 5,
   },
   { user: "Sarah L.", text: "A modern classic. Fast shipping too.", rating: 4 },
+  {
+    user: "David K.",
+    text: "Exactly what I was looking for. A masterpiece.",
+    rating: 5,
+  },
 ];
 
 export default function BookDetailsPage() {
-  const { id } = useParams(); // Get the ID from URL
+  const { id } = useParams();
   const [book, setBook] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useAuthStore();
-  const router = useRouter();
 
   useEffect(() => {
-    // Fetch details from Open Library using the ID (Key)
     const fetchDetails = async () => {
       try {
-        // Open Library Work API
+        // GOOGLE BOOKS ID LOOKUP
         const response = await fetch(
-          `https://openlibrary.org/works/${id}.json`
+          `https://www.googleapis.com/books/v1/volumes/${id}`
         );
         const data = await response.json();
+        const info = data.volumeInfo;
 
-        // Fetch Author Name (Separate API call usually needed, but we simulate for speed or fetch if link exists)
-        // For aesthetics, we'll keep it simple or fetch the author if the link is there.
-        let authorName = "Unknown Author";
-        if (data.authors && data.authors.length > 0) {
-          const authorRes = await fetch(
-            `https://openlibrary.org${data.authors[0].author.key}.json`
-          );
-          const authorData = await authorRes.json();
-          authorName = authorData.name;
-        }
+        // Image Quality Hack
+        let img = info.imageLinks?.thumbnail || "";
+        if (img)
+          img = img.replace("http:", "https:").replace("&zoom=1", "&zoom=0");
 
-        // Clean Description
-        let desc = "No description available for this masterpiece.";
-        if (typeof data.description === "string") desc = data.description;
-        else if (data.description?.value) desc = data.description.value;
+        // Clean HTML Description
+        const desc = info.description
+          ? info.description.replace(/<\/?[^>]+(>|$)/g, "")
+          : "No description available for this masterpiece.";
 
         setBook({
-          id: id as string,
-          title: data.title,
-          author: authorName,
+          id: data.id,
+          title: info.title,
+          author: info.authors?.[0] || "Unknown",
           description: desc,
-          coverUrl: `https://covers.openlibrary.org/b/id/${
-            data.covers?.[0] || ""
-          }-L.jpg`,
-          price: parseFloat((15 + (data.title.length % 20)).toFixed(2)),
+          coverUrl: img,
+          // Consistent Price Generation
+          price: parseFloat((25 + (info.title.length % 40)).toFixed(2)),
         });
       } catch (e) {
         console.error(e);
@@ -82,84 +79,113 @@ export default function BookDetailsPage() {
       coverUrl: book.coverUrl,
       quantity: 1,
     });
-    // Visual Feedback
-    alert("Added to Cart");
+
+    // Analytics
+    if (typeof window !== "undefined") {
+      import("clevertap-web-sdk").then((ct) => {
+        const clevertap = ct.default || ct;
+        clevertap.event.push("Added to Cart", {
+          "Product Name": book.title,
+          Source: "Details Page",
+        });
+      });
+    }
   };
 
   if (loading || !book)
     return (
-      <div className="min-h-screen bg-paper flex items-center justify-center">
-        Loading Archive...
+      <div className="min-h-screen bg-paper flex items-center justify-center font-serif text-ink animate-pulse">
+        Fetching from Archive...
       </div>
     );
 
   return (
-    <main className="min-h-screen bg-paper text-ink p-6 lg:p-12 flex flex-col lg:flex-row gap-12">
-      {/* LEFT: IMAGE (Sticky) */}
-      <div className="w-full lg:w-1/2 lg:h-[90vh] lg:sticky lg:top-12 flex items-center justify-center bg-[#e8e6e1] relative overflow-hidden">
+    <main className="min-h-screen bg-paper text-ink p-6 lg:p-12 flex flex-col lg:flex-row gap-12 relative">
+      {/* LEFT: IMAGE (Sticky & Large) */}
+      <div className="w-full lg:w-1/2 lg:h-[90vh] lg:sticky lg:top-12 flex items-center justify-center bg-[#e8e6e1] relative overflow-hidden rounded-sm">
+        {/* Background Blur */}
+        <div className="absolute inset-0 bg-ink/5" />
+
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8 }}
-          className="relative w-[300px] h-[450px] shadow-2xl"
+          className="relative w-[300px] h-[450px] lg:w-[400px] lg:h-[600px] shadow-2xl perspective-1000"
         >
           <Image
             src={book.coverUrl}
             alt={book.title}
             fill
-            className="object-cover grayscale hover:grayscale-0 transition-all duration-700"
+            className="object-cover rounded-sm shadow-xl"
           />
+
+          {/* Reflection */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent pointer-events-none rounded-sm" />
         </motion.div>
       </div>
 
       {/* RIGHT: CONTENT */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center space-y-12 py-12">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center space-y-12 py-12 lg:pr-24">
         {/* Title Block */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
-          <span className="font-sans text-xs uppercase tracking-[0.2em] text-gold">
-            Architecture / Design
+          <span className="font-sans text-xs uppercase tracking-[0.2em] text-gold font-bold">
+            Detailed View
           </span>
-          <h1 className="font-serif text-5xl lg:text-7xl leading-[0.9] mt-4 mb-2">
+          <h1 className="font-serif text-5xl lg:text-7xl leading-[0.9] mt-4 mb-2 text-ink">
             {book.title}
           </h1>
-          <p className="font-serif italic text-2xl text-gray-400">
+          <p className="font-serif italic text-3xl text-gray-400">
             by {book.author}
           </p>
         </motion.div>
 
         {/* Price & Add */}
         <div className="flex items-center gap-8 border-t border-b border-gray-200 py-8">
-          <span className="font-sans text-3xl font-bold">${book.price}</span>
+          <span className="font-sans text-4xl font-bold text-ink">
+            ${book.price}
+          </span>
           <button
             onClick={handleAddToCart}
-            className="bg-ink text-white px-8 py-4 font-sans text-xs uppercase tracking-widest hover:bg-gold transition-colors"
+            className="bg-ink text-white px-12 py-5 font-sans text-xs uppercase tracking-widest hover:bg-gold transition-colors shadow-lg"
           >
             Add to Cart
           </button>
         </div>
 
         {/* Description */}
-        <p className="font-sans text-gray-600 leading-relaxed text-lg max-w-xl">
-          {book.description.substring(0, 500)}...
-        </p>
+        <div className="space-y-4">
+          <h3 className="font-sans text-xs uppercase tracking-widest text-gray-500">
+            Synopsis
+          </h3>
+          <p className="font-sans text-gray-600 leading-loose text-lg">
+            {book.description}
+          </p>
+        </div>
 
         {/* Fake Lively Feedback */}
-        <div className="bg-[#f4f1ea] p-8 mt-12">
-          <h3 className="font-serif text-2xl mb-6">Reader Notes</h3>
-          <div className="space-y-6">
+        <div className="bg-[#f4f1ea] p-10 mt-12 rounded-sm">
+          <h3 className="font-serif text-2xl mb-8 flex items-center gap-4">
+            Reader Notes{" "}
+            <span className="text-sm font-sans text-gray-400 tracking-widest uppercase">
+              (Verified)
+            </span>
+          </h3>
+          <div className="space-y-8">
             {REVIEWS.map((review, i) => (
               <div
                 key={i}
-                className="border-b border-gray-300 pb-4 last:border-0"
+                className="border-b border-gray-300 pb-6 last:border-0 last:pb-0"
               >
                 <div className="flex justify-between items-baseline mb-2">
-                  <span className="font-bold font-sans text-xs uppercase tracking-widest">
+                  <span className="font-bold font-sans text-xs uppercase tracking-widest text-ink">
                     {review.user}
                   </span>
-                  <span className="text-gold">{"★".repeat(review.rating)}</span>
+                  <span className="text-gold text-xs">
+                    {"★".repeat(review.rating)}
+                  </span>
                 </div>
                 <p className="font-serif italic text-gray-600">
                   "{review.text}"

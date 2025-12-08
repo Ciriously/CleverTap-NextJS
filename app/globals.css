@@ -1,13 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  /* 1. Define Custom Colors */
   --color-paper: #fdfbf7;
   --color-ink: #1a1a1a;
-  --color-gold: #c6a87c;
+  /* OLD: #C6A87C */
+  /* NEW (Darker Bronze): */
+  --color-gold: #9f8155;
 
-  /* 2. Define Custom Fonts */
-  /* This links to the variables we set up in layout.tsx */
   --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
