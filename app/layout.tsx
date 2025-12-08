@@ -27,6 +27,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Curated Reads | The Archive",
   description: "A curated selection of the finest literature.",
+  manifest: "/manifest.json",
 };
 
 // --- VIEWPORT (Initial Theme Color) ---

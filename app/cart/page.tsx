@@ -4,9 +4,9 @@ import { useAuthStore } from "@/lib/store";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { Trash, ShoppingBagOpen } from "@phosphor-icons/react";
 
 export default function CartPage() {
-  // Destructure 'showToast' from the store
   const { cart, removeFromCart, clearCart, user, showToast } = useAuthStore();
   const router = useRouter();
 
@@ -16,13 +16,11 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     if (!user) {
-      // Use Toast instead of alert
       showToast("Please login to complete purchase");
       router.push("/login");
       return;
     }
 
-    // FIRE CLEVERTAP CHARGED EVENT
     if (typeof window !== "undefined") {
       const ctModule = await import("clevertap-web-sdk");
       const ct = ctModule.default || ctModule;
@@ -42,7 +40,6 @@ export default function CartPage() {
       console.log("🚀 [CLEVERTAP] Charged:", chargeDetails);
       ct.event.push("Charged", chargeDetails);
 
-      // ✨ LUXURY TOAST NOTIFICATION ✨
       showToast("Order Confirmed. Welcome to the Archive.");
 
       clearCart();
@@ -55,7 +52,13 @@ export default function CartPage() {
       <h1 className="font-serif text-5xl lg:text-7xl mb-12">Your Selection</h1>
 
       {cart.length === 0 ? (
-        <div className="text-center py-24">
+        <div className="text-center py-24 flex flex-col items-center">
+          {/* EMPTY STATE ICON */}
+          <ShoppingBagOpen
+            size={64}
+            weight="thin"
+            className="text-gray-300 mb-6"
+          />
           <p className="font-sans text-gray-400 uppercase tracking-widest text-sm">
             Your cart is empty.
           </p>
@@ -101,11 +104,14 @@ export default function CartPage() {
                       <span className="font-sans font-bold text-[#9F8155]">
                         ${item.price}
                       </span>
+
+                      {/* REMOVE BUTTON (ICON) */}
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
+                        className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                        title="Remove Item"
                       >
-                        Remove Item
+                        <Trash size={20} weight="light" />
                       </button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@
 import { useAuthStore } from "@/lib/store";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { UserCircle, Bell, SignOut, Tote } from "@phosphor-icons/react";
 
 export default function Header() {
   const { user, logout, showToast } = useAuthStore();
@@ -23,32 +24,34 @@ export default function Header() {
     router.refresh();
   };
 
-  // --- NEW: HANDLE PUSH PERMISSION ---
   const handlePushRequest = async () => {
     if (typeof window !== "undefined") {
-      // Dynamic import to load SDK
       const ctModule = await import("clevertap-web-sdk");
-      const clevertap = (ctModule.default || ctModule) as any; // Cast to any to avoid TS errors
+      const clevertap = (ctModule.default || ctModule) as any;
 
       console.log("🔔 [PUSH] Requesting Permission...");
 
-      // 1. Request Permission
+      // 1. Check if notifications are already enabled
+      if (Notification.permission === "granted") {
+        showToast("Notifications are already enabled");
+        return;
+      }
+
+      // 2. Trigger Soft Prompt (Simplified)
+      // REMOVED: askAgainTimeInSeconds (This was causing the 'reading 5' crash)
       clevertap.notifications.push({
         titleText: "Unlock The Archive",
         bodyText: "Get notified about limited edition drops.",
-        okButtonText: "Enable",
+        okButtonText: "Enable Access",
         rejectButtonText: "Later",
-        askAgainTimeInSeconds: 5,
-        serviceWorkerPath: "/clevertap_sw.js", // Explicit path
+        serviceWorkerPath: "/clevertap_sw.js", // Ensure this file exists in /public
       });
-
-      // Visual feedback
-      showToast("Check your browser permissions");
     }
   };
 
   // Styles
   const isHome = pathname === "/";
+  // Logic: Home top = White text (mix-blend). Scrolled or other pages = Ink text.
   const headerClass =
     isHome && !scrolled
       ? "fixed top-0 left-0 w-full z-50 p-8 text-white mix-blend-difference transition-all duration-300"
@@ -75,8 +78,10 @@ export default function Header() {
           </button>
           <button
             onClick={() => router.push("/cart")}
-            className="font-sans text-xs font-bold uppercase tracking-widest hover:opacity-70 transition-opacity"
+            className="font-sans text-xs font-bold uppercase tracking-widest hover:opacity-70 transition-opacity flex items-center gap-2"
           >
+            {/* Added Tote Icon here for aesthetics */}
+            <Tote size={18} weight="light" className="mb-1" />
             Cart
           </button>
         </nav>
@@ -84,32 +89,23 @@ export default function Header() {
         {/* AUTH & TOOLS */}
         {user ? (
           <div className="flex items-center gap-6">
-            {/* 🔔 NEW: BELL ICON (Push Trigger) */}
+            {/* 🔔 BELL ICON (With Ping Animation) */}
             <button
               onClick={handlePushRequest}
               className="group relative w-8 h-8 flex items-center justify-center hover:scale-110 transition-transform"
               title="Enable Notifications"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-5 h-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-                />
-              </svg>
+              <Bell
+                size={24}
+                weight="light"
+                className="text-current group-hover:text-[#9F8155] transition-colors"
+              />
               {/* Ping Animation */}
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#9F8155] rounded-full animate-ping opacity-75"></span>
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#9F8155] rounded-full"></span>
             </button>
 
-            {/* Profile Name */}
+            {/* PROFILE NAME */}
             <button
               onClick={() => router.push("/profile")}
               className="hidden md:block font-sans text-xs tracking-widest hover:text-[#9F8155] transition-colors"
@@ -117,20 +113,21 @@ export default function Header() {
               {user.name.split(" ")[0].toUpperCase()}
             </button>
 
-            {/* Profile Icon */}
+            {/* 👤 PROFILE ICON */}
             <div
               onClick={() => router.push("/profile")}
-              className="w-8 h-8 rounded-full bg-[#9F8155] flex items-center justify-center cursor-pointer text-white font-serif italic"
+              className="cursor-pointer hover:scale-110 transition-transform hover:text-[#9F8155]"
             >
-              {user.name.charAt(0)}
+              <UserCircle size={28} weight="light" />
             </div>
 
-            {/* Logout */}
+            {/* 🚪 LOGOUT (Icon + Text) */}
             <button
               onClick={handleLogout}
-              className="font-sans text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 border-l border-gray-300 pl-6 ml-2 transition-colors"
+              className="flex items-center gap-2 font-sans text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 border-l border-gray-300 pl-6 ml-2 transition-colors"
             >
-              LOGOUT
+              <SignOut size={16} weight="light" />
+              <span>LOGOUT</span>
             </button>
           </div>
         ) : (

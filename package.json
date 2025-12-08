@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "clevertap-web-sdk": "^2.3.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.25",

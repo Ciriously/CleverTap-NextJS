@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import {
+  InstagramLogo,
+  TwitterLogo,
+  Globe,
+  ArrowRight,
+} from "@phosphor-icons/react";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -48,7 +53,7 @@ export default function Footer() {
           onSubmit={handleSubscribe}
           className="w-full lg:w-1/3 mt-12 lg:mt-0"
         >
-          <div className="relative border-b border-[#333] pb-4 group hover:border-[#Fdfbf7] transition-colors duration-500">
+          <div className="relative border-b border-[#333] pb-4 group hover:border-[#Fdfbf7] transition-colors duration-500 flex items-center">
             <input
               type="email"
               placeholder="Email Address"
@@ -58,9 +63,10 @@ export default function Footer() {
             />
             <button
               type="submit"
-              className="absolute right-0 top-0 text-xs uppercase tracking-widest text-[#9F8155] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="text-[#9F8155] opacity-50 group-hover:opacity-100 transition-opacity duration-300 hover:scale-110 transform"
+              title="Subscribe"
             >
-              Subscribe
+              <ArrowRight size={24} weight="light" />
             </button>
           </div>
         </form>
@@ -112,31 +118,36 @@ export default function Footer() {
             </li>
           </ul>
         </div>
+
+        {/* SOCIAL ICONS (UPDATED) */}
         <div className="space-y-4">
           <h4 className="font-sans text-xs uppercase tracking-widest text-[#555]">
             Social
           </h4>
-          <ul className="space-y-2 font-serif text-lg text-[#aaa]">
-            <li>
-              <a href="#" className="hover:text-white transition-colors">
-                Instagram
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-white transition-colors">
-                Twitter
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-white transition-colors">
-                Are.na
-              </a>
-            </li>
-          </ul>
+          <div className="flex gap-6 text-[#aaa]">
+            <a
+              href="#"
+              className="hover:text-[#9F8155] transition-colors hover:scale-110 transform duration-300"
+            >
+              <InstagramLogo size={24} weight="light" />
+            </a>
+            <a
+              href="#"
+              className="hover:text-[#9F8155] transition-colors hover:scale-110 transform duration-300"
+            >
+              <TwitterLogo size={24} weight="light" />
+            </a>
+            <a
+              href="#"
+              className="hover:text-[#9F8155] transition-colors hover:scale-110 transform duration-300"
+            >
+              <Globe size={24} weight="light" />
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* 3. MASSIVE BRANDING (Bottom) */}
+      {/* 3. MASSIVE BRANDING */}
       <div className="relative z-10">
         <h1 className="font-sans font-black text-[12vw] leading-none text-center text-[#222] select-none tracking-tighter">
           CURATED.

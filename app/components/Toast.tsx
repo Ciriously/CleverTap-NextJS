@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuthStore } from "../../lib/store";
+import { useAuthStore } from "@/lib/store";
+import { CheckCircle } from "@phosphor-icons/react";
 
 export default function Toast() {
   const { toast, hideToast } = useAuthStore();
@@ -17,14 +18,14 @@ export default function Toast() {
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10000]"
         >
           <div
-            className="bg-ink/90 backdrop-blur-md text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-4 cursor-pointer"
+            className="bg-[#1a1a1a]/95 backdrop-blur-md text-white pl-6 pr-8 py-4 rounded-full shadow-2xl flex items-center gap-4 cursor-pointer border border-[#333]"
             onClick={hideToast}
           >
-            {/* Icon */}
-            <div className="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
+            {/* SUCCESS ICON */}
+            <CheckCircle size={24} weight="light" className="text-[#9F8155]" />
 
-            {/* Text */}
-            <span className="font-sans text-xs uppercase tracking-widest font-bold">
+            {/* MESSAGE */}
+            <span className="font-sans text-[10px] uppercase tracking-widest font-bold">
               {toast.message}
             </span>
           </div>
