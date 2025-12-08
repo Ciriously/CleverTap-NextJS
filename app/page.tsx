@@ -145,47 +145,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen w-full bg-paper flex flex-col overflow-x-hidden relative">
-      {/* --- NAVIGATION --- */}
-      <nav className="absolute top-0 left-0 w-full p-8 z-50 flex justify-between items-center mix-blend-difference text-white">
-        <div className="font-serif font-bold text-xl">CURATED.</div>
-
-        <div className="hidden lg:block">
-          <button
-            onClick={() => router.push("/shop")}
-            className="group relative px-6 py-2 rounded-full border border-gray-500 hover:border-white transition-colors duration-300 overflow-hidden"
-          >
-            <span className="relative z-10 font-sans text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors duration-300">
-              Browse Collection
-            </span>
-            <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-          </button>
-        </div>
-
-        {user ? (
-          <div className="flex items-center gap-4">
-            <span className="font-sans text-xs tracking-widest text-gray-400">
-              HELLO, {user.name.split(" ")[0].toUpperCase()}
-            </span>
-            <button
-              onClick={() => {
-                logout();
-                router.refresh();
-              }}
-              className="font-sans text-xs font-bold uppercase text-red-400 ml-4 hover:opacity-70"
-            >
-              LOGOUT
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => router.push("/login")}
-            className="font-sans text-xs font-bold uppercase tracking-widest text-white border border-white px-6 py-2 hover:bg-white hover:text-black transition-colors"
-          >
-            LOGIN
-          </button>
-        )}
-      </nav>
-
       {/* --- HERO SECTION --- */}
       <section className="relative w-full lg:h-screen flex flex-col lg:flex-row">
         {/* PARTICLES (Subtle Background movement) */}

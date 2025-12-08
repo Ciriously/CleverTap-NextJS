@@ -8,6 +8,7 @@ import CustomCursor from "./components/CustomCursor";
 import Toast from "./components/Toast";
 import FloatingCart from "./components/FloatingCart";
 import TabEffects from "./components/TabEffects";
+import Header from "./components/Header";
 
 // --- FONT CONFIG ---
 const playfair = Playfair_Display({
@@ -52,6 +53,7 @@ export default function RootLayout({
         {/* 4. ANALYTICS ENGINE */}
         <AnalyticsInit /> {/* CleverTap SDK */}
         {/* 5. PAGE CONTENT */}
+        <Header />
         {children}
       </body>
     </html>
