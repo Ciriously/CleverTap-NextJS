@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 type NativeData = {
+  msgId: string;
+  pivotId?: string;
   title: string;
   message: string;
   image_url: string;
@@ -19,52 +21,47 @@ export default function NativeSpotlight() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkNativeDisplay = async () => {
-      if (typeof window !== "undefined") {
-        const ctModule = await import("clevertap-web-sdk");
+    // The SDK dispatches 'CT_web_native_display' on document when a KV-pair
+    // native display campaign triggers. detail = { msgId, pivotId?, kv: {...} }
+    const handleNativeDisplay = (e: Event) => {
+      const { msgId, pivotId, kv } = (e as CustomEvent).detail ?? {};
 
-        // 👇 THE FIX: Cast to 'any' to stop TypeScript complaining
-        const clevertap = (ctModule.default || ctModule) as any;
+      if (!kv || !kv.title) return;
 
-        // Safety check: Ensure nativeDisplay module is available
-        if (!clevertap.nativeDisplay) {
-          console.warn("⚠️ CleverTap Native Display module not found.");
-          return;
-        }
+      setData({
+        msgId,
+        pivotId,
+        title: kv.title,
+        message: kv.message ?? "",
+        image_url: kv.image_url ?? "",
+        cta_text: kv.cta_text ?? "Explore",
+        cta_url: kv.cta_url ?? "/shop",
+        bg_color: kv.bg_color,
+      });
 
-        console.log("📡 [NATIVE] Checking for Display Units...");
-
-        clevertap.nativeDisplay.getDisplayUnits({
-          callback: (units: any) => {
-            console.log("📡 [NATIVE] Units received:", units);
-
-            if (units && units.length > 0) {
-              const unit = units[0];
-              const content = unit.content[0];
-
-              setData({
-                title: content.title.text,
-                message: content.message.text,
-                image_url: content.media.url,
-                cta_text: content.action.text,
-                cta_url: content.action.url.android || "/shop",
-                bg_color: unit.custom_kv?.bg_color,
-              });
-
-              // Track Impression
-              clevertap.nativeDisplay.recordDisplayUnitViewed(unit.unit_id);
-            } else {
-              console.log("📡 [NATIVE] No active campaigns found.");
-            }
-          },
-        });
+      // Track impression
+      if (typeof window !== "undefined" && window.clevertap) {
+        window.clevertap.renderNotificationViewed({ msgId, pivotId });
       }
     };
 
-    checkNativeDisplay();
+    document.addEventListener("CT_web_native_display", handleNativeDisplay);
+    return () => {
+      document.removeEventListener("CT_web_native_display", handleNativeDisplay);
+    };
   }, []);
 
   if (!data) return null;
+
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.clevertap) {
+      window.clevertap.renderNotificationClicked({
+        msgId: data.msgId,
+        pivotId: data.pivotId,
+      });
+    }
+    router.push(data.cta_url);
+  };
 
   return (
     <section className="w-full py-24 px-8 lg:px-24">
@@ -89,11 +86,8 @@ export default function NativeSpotlight() {
             </p>
 
             <button
-              onClick={() => {
-                // Track Click manually if needed
-                console.log("Native Ad Clicked");
-                router.push(data.cta_url);
-              }}
+              type="button"
+              onClick={handleClick}
               className="group flex items-center gap-4 text-white hover:text-[#9F8155] transition-colors"
             >
               <span className="font-sans text-xs uppercase tracking-widest font-bold">
@@ -104,15 +98,17 @@ export default function NativeSpotlight() {
           </div>
 
           {/* IMAGE SIDE */}
-          <div className="w-full lg:w-1/2 h-[300px] lg:h-[500px] relative">
-            <Image
-              src={data.image_url}
-              alt={data.title}
-              fill
-              className="object-cover opacity-80"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a1a] via-transparent to-transparent" />
-          </div>
+          {data.image_url && (
+            <div className="w-full lg:w-1/2 h-[300px] lg:h-[500px] relative">
+              <Image
+                src={data.image_url}
+                alt={data.title}
+                fill
+                className="object-cover opacity-80"
+              />
+              <div className="absolute inset-0 bg-linear-to-r from-ink via-transparent to-transparent" />
+            </div>
+          )}
         </div>
       </motion.div>
     </section>

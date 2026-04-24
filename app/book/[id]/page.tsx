@@ -36,10 +36,17 @@ export default function BookDetailsPage() {
     const fetchDetails = async () => {
       try {
         // GOOGLE BOOKS ID LOOKUP
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY;
         const response = await fetch(
-          `https://www.googleapis.com/books/v1/volumes/${id}`
+          `https://www.googleapis.com/books/v1/volumes/${id}${apiKey ? `?key=${apiKey}` : ""}`
         );
         const data = await response.json();
+
+        if (data.error) {
+          console.error("Google Books API error:", data.error.message);
+          return;
+        }
+
         const info = data.volumeInfo;
 
         // Image Quality Hack

@@ -140,10 +140,27 @@ export default function ShopPage() {
       setLoading(true);
       try {
         const query = CATEGORIES[activeCategory];
-        const endpoint = `https://www.googleapis.com/books/v1/volumes?q=${query}&orderBy=newest&maxResults=40&langRestrict=en&printType=books`;
+        const cacheKey = `books_cache_${activeCategory}`;
+
+        // Return cached result if available (avoids burning API quota on navigation)
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          setBooks(JSON.parse(cached));
+          setLoading(false);
+          return;
+        }
+
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY;
+        const endpoint = `https://www.googleapis.com/books/v1/volumes?q=${query}&orderBy=newest&maxResults=40&langRestrict=en&printType=books${apiKey ? `&key=${apiKey}` : ""}`;
 
         const response = await fetch(endpoint);
         const data = await response.json();
+
+        if (data.error) {
+          console.error("Google Books API error:", data.error.message);
+          setLoading(false);
+          return;
+        }
 
         if (!data.items) {
           setBooks([]);
@@ -181,7 +198,9 @@ export default function ShopPage() {
           new Map(processedBooks.map((item: Book) => [item.id, item])).values()
         ) as Book[];
 
-        setBooks(shuffleArray(uniqueBooks).slice(0, 15));
+        const finalBooks = shuffleArray(uniqueBooks).slice(0, 15);
+        setBooks(finalBooks);
+        sessionStorage.setItem(cacheKey, JSON.stringify(finalBooks));
 
         // Analytics
         if (typeof window !== "undefined") {

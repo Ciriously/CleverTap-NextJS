@@ -81,10 +81,16 @@ export default function Home() {
     const fetchHeroBook = async () => {
       try {
         // Fetch "Design" books
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY;
         const response = await fetch(
-          "https://www.googleapis.com/books/v1/volumes?q=subject:design&orderBy=newest&langRestrict=en&maxResults=5"
+          `https://www.googleapis.com/books/v1/volumes?q=subject:design&orderBy=newest&langRestrict=en&maxResults=5${apiKey ? `&key=${apiKey}` : ""}`
         );
         const data = await response.json();
+
+        if (data.error) {
+          console.error("Google Books API error:", data.error.message);
+          return;
+        }
 
         const validBook = data.items?.find(
           (item: any) =>
